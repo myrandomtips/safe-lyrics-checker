@@ -55,8 +55,7 @@ safe-lyrics-checker rights-check --jurisdiction US --publication-year 1929
 safe-lyrics-checker rights-check --jurisdiction US --publication-year 1930 --renewal-status not_renewed
 safe-lyrics-checker rights-check --jurisdiction UK --lyricist-death-year 1954
 safe-lyrics-checker rights-check --jurisdiction AU --lyricist-death-year 1954
-
-
+```
 
 Arguments:
 
@@ -119,8 +118,49 @@ Caching:
 - HTTP pages are cached in `.cache/safe_lyrics_checker.sqlite`
 - Cache key is URL with a default TTL of 7 days
 
+
+### URL evidence command: `evaluate-url`
+
+`evaluate-url` fetches **one user-provided URL only** and runs the existing rights engine using only explicit metadata found on that page.
+
+- No web search.
+- No crawling.
+- No link-following.
+- No lyric text extraction/output.
+
+Supported domain adapters (light parsing):
+
+- imslp.org
+- cpdl.org
+- gutenberg.org
+- archive.org
+- loc.gov (best effort; may be blocked)
+
+Unknown domains use conservative generic metadata extraction and return `UNKNOWN` when insufficient.
+
+Example:
+
+```bash
+safe-lyrics-checker evaluate-url --jurisdiction US https://imslp.org/wiki/Amazing_Grace
+```
+
+Output includes:
+
+- `Result: SAFE | NOT_SAFE | UNKNOWN`
+- `Explanation: ...`
+- `Evidence URL: ...`
+
+Exit codes:
+
+- `0` = SAFE
+- `1` = NOT_SAFE
+- `2` = UNKNOWN
+
+If the page is blocked (403/Cloudflare/captcha/timeout), the command prints a warning and exits `2`.
+
+> **Legal disclaimer:** Results are conservative metadata-based heuristics and are **not legal advice**. Always verify with qualified legal counsel for production/legal decisions.
+
 ### Secondary command: `quote-check`
-## Secondary command: `quote-check`
 
 A legacy/secondary heuristic checker for quote length and exact-match checks.
 It is **not** the primary legal status engine.

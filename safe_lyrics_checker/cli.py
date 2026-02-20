@@ -9,6 +9,7 @@ from typing import Sequence
 from .quote_safety import check_quote_safety
 from .rights_engine import RightsStatus, check_lyrics_rights
 from .search_engine import SOURCES, evaluate_candidate, search_candidates
+from .url_sources import evaluate_url
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -69,6 +70,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     quote_parser.add_argument("--max-words", type=int, default=90)
     quote_parser.add_argument("--max-lines", type=int, default=4)
+
+    evaluate_url_parser = subparsers.add_parser(
+        "evaluate-url",
+        help="Evaluate rights from one evidence URL only (no search/crawling).",
+    )
+    evaluate_url_parser.add_argument("--jurisdiction", choices=["US", "UK", "AU"], required=True)
+    evaluate_url_parser.add_argument("url", help="Single evidence URL to fetch and evaluate.")
 
     return parser
 
@@ -159,6 +167,32 @@ def _run_quote_check(args: argparse.Namespace) -> int:
     return 0 if result.is_safe else 1
 
 
+def _display_unknown(value: str | int | None) -> str:
+    return str(value) if value is not None else "UNKNOWN"
+
+
+def _run_evaluate_url(args: argparse.Namespace) -> int:
+    rights, evaluation = evaluate_url(args.url, args.jurisdiction)
+
+    if evaluation.warning:
+        print(f"WARN: {evaluation.warning}")
+
+    print(f"Result: {rights.status.value}")
+    print(f"Explanation: {rights.explanation}")
+    print(f"Evidence URL: {args.url}")
+    print(f"Title: {_display_unknown(evaluation.metadata.title)}")
+    print(f"Lyricist/Composer: {_display_unknown(evaluation.metadata.lyricist_or_composer)}")
+    print(f"Lyricist death year: {_display_unknown(evaluation.metadata.lyricist_death_year)}")
+    print(f"Publication year: {_display_unknown(evaluation.metadata.publication_year)}")
+    print(f"US renewal status: {evaluation.metadata.renewal_status.upper() if evaluation.metadata.renewal_status != 'unknown' else 'UNKNOWN'}")
+
+    if rights.status is RightsStatus.SAFE:
+        return 0
+    if rights.status is RightsStatus.NOT_SAFE:
+        return 1
+    return 2
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -169,6 +203,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_search(args)
     if args.command == "quote-check":
         return _run_quote_check(args)
+    if args.command == "evaluate-url":
+        return _run_evaluate_url(args)
 
     raise SystemExit("Unknown command")
 

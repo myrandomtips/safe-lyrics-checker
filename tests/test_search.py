@@ -20,7 +20,7 @@ class DummyResponse:
 def test_http_cache_reuses_cached_response(monkeypatch, tmp_path: Path) -> None:
     calls = {"count": 0}
 
-    def fake_get(url: str, timeout: int = 15):
+    def fake_get(url: str, timeout: int = 15, headers=None):
         calls["count"] += 1
         return DummyResponse("<html><a href='/ebooks/1'>Sample Title</a></html>")
 
@@ -45,7 +45,7 @@ def test_search_candidates_parses_and_enriches(monkeypatch, tmp_path: Path) -> N
         ),
     }
 
-    def fake_get(url: str, timeout: int = 15):
+    def fake_get(url: str, timeout: int = 15, headers=None):
         return DummyResponse(responses[url])
 
     monkeypatch.setattr("safe_lyrics_checker.http_cache.requests.get", fake_get)
@@ -75,7 +75,7 @@ def test_cli_search_outputs_rights_status(monkeypatch, tmp_path: Path) -> None:
         "https://www.gutenberg.org/ebooks/123": "Published 1929. not renewed.",
     }
 
-    def fake_get(url: str, timeout: int = 15):
+    def fake_get(url: str, timeout: int = 15, headers=None):
         return DummyResponse(responses[url])
 
     monkeypatch.setattr("safe_lyrics_checker.http_cache.requests.get", fake_get)
@@ -103,7 +103,7 @@ def test_search_skips_worldcat_http_error_by_default(monkeypatch, tmp_path: Path
         "https://www.gutenberg.org/ebooks/123": "Published 1929. not renewed.",
     }
 
-    def fake_get(url: str, timeout: int = 15):
+    def fake_get(url: str, timeout: int = 15, headers=None):
         if url.startswith("https://www.worldcat.org/search"):
             response = requests.Response()
             response.status_code = 403
@@ -132,7 +132,7 @@ def test_search_skips_worldcat_http_error_by_default(monkeypatch, tmp_path: Path
 
 
 def test_search_with_only_failing_source_returns_unknown(monkeypatch, tmp_path: Path, capsys) -> None:
-    def fake_get(url: str, timeout: int = 15):
+    def fake_get(url: str, timeout: int = 15, headers=None):
         response = requests.Response()
         response.status_code = 403
         response.reason = "Forbidden"
@@ -158,7 +158,7 @@ def test_search_with_only_failing_source_returns_unknown(monkeypatch, tmp_path: 
 
 
 def test_search_strict_mode_raises_http_error(monkeypatch, tmp_path: Path) -> None:
-    def fake_get(url: str, timeout: int = 15):
+    def fake_get(url: str, timeout: int = 15, headers=None):
         response = requests.Response()
         response.status_code = 403
         response.reason = "Forbidden"
