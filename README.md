@@ -1,70 +1,84 @@
 # safe-lyrics-checker
 
-A Python CLI project for running conservative checks on lyric excerpts before publishing them.
+`safe-lyrics-checker` is a conservative, metadata-only copyright safety checker for song lyrics.
 
-## What this project includes
+> **Important:** This tool does **not** provide legal advice.
+> It is designed to provide conservative status guidance from limited metadata.
 
-- A packaged CLI app named `safe_lyrics_checker`.
-- A reusable rules engine module for excerpt checks.
-- Unit tests for both rules logic and CLI behavior.
+## Core purpose
 
-## Safety rules in this initial version
+The primary feature is `rights-check`, which classifies lyric rights status as:
 
-The rules engine flags an excerpt as **unsafe** when any of these are true:
+- `SAFE`
+- `NOT_SAFE`
+- `UNKNOWN`
 
-1. The excerpt exceeds a configurable maximum word count (`--max-words`, default `90`).
-2. The excerpt exceeds a configurable maximum number of non-empty lines (`--max-lines`, default `4`).
-3. The excerpt exactly matches a known lyric segment in an optional corpus file.
+using only metadata (jurisdiction, publication year, lyricist death year, and US renewal status).
 
-## Project structure
+The tool does **not** fetch lyric text, does **not** scrape websites, and does **not** use lyric databases.
 
-```text
-safe_lyrics_checker/
-  __init__.py
-  cli.py
-  rules_engine.py
-tests/
-  test_cli.py
-  test_rules_engine.py
-pyproject.toml
-README.md
+## Conservative rules implemented
+
+### UK / AU
+
+- `SAFE` if lyricist death year is `<= 1954`.
+- `NOT_SAFE` if lyricist death year is `>= 1955`.
+- `UNKNOWN` if lyricist death year is missing.
+
+### US
+
+- Publication year `<= 1929` -> `SAFE`.
+- Publication year `1930-1963`:
+  - `SAFE` only when `renewal_status=not_renewed`.
+  - `UNKNOWN` when `renewal_status=unknown` or `renewal_status=renewed`.
+- Publication year `1964-1977` -> `NOT_SAFE`.
+- Publication year `>= 1978`:
+  - `SAFE` only if lyricist death year `<= 1954`.
+  - `NOT_SAFE` if death year `>= 1955`.
+  - `UNKNOWN` if death year is missing.
+
+## CLI
+
+## Primary command: `rights-check`
+
+```bash
+safe-lyrics-checker rights-check --jurisdiction US --publication-year 1929
 ```
 
-## Initial setup
+```bash
+safe-lyrics-checker rights-check --jurisdiction US --publication-year 1930 --renewal-status not_renewed
+```
+
+```bash
+safe-lyrics-checker rights-check --jurisdiction UK --lyricist-death-year 1955
+```
+
+Arguments:
+
+- `--jurisdiction [US|UK|AU]` (required)
+- `--publication-year INT` (required for US)
+- `--lyricist-death-year INT` (optional; required in life+70 paths)
+- `--renewal-status [unknown|renewed|not_renewed]` (US 1930-1963)
+
+Output:
+
+- One status line: `SAFE`, `NOT_SAFE`, or `UNKNOWN`
+- One short explanation line
+
+Exit codes:
+
+- `0` = `SAFE`
+- `1` = `NOT_SAFE`
+- `2` = `UNKNOWN`
+
+## Secondary command: `quote-check`
+
+A legacy/secondary heuristic checker for quote length and exact-match checks.
+It is **not** the primary legal status engine.
+
+## Setup
 
 ```bash
 python -m pip install -e '.[dev]'
-```
-
-## Run tests
-
-```bash
 pytest
 ```
-
-## CLI usage
-
-### 1) Pass excerpt directly
-
-```bash
-safe-lyrics-checker "gentle humming by the sea"
-```
-
-### 2) Read excerpt from a file
-
-```bash
-safe-lyrics-checker --file excerpt.txt
-```
-
-### 3) Include a known-lyrics corpus file
-
-Provide one known lyric segment per line.
-
-```bash
-safe-lyrics-checker --file excerpt.txt --known-lyrics-file known_lyrics.txt
-```
-
-### Exit codes
-
-- `0`: excerpt considered safe by current rule set.
-- `1`: one or more rules were violated.

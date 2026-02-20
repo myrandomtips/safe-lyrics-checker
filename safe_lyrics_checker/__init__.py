@@ -1,5 +1,12 @@
 """safe_lyrics_checker package."""
 
-from .rules_engine import CheckResult, check_lyrics_excerpt
+from .quote_safety import CheckResult, check_quote_safety
+from .rights_engine import RightsResult, RightsStatus, check_lyrics_rights
 
-__all__ = ["CheckResult", "check_lyrics_excerpt"]
+__all__ = [
+    "CheckResult",
+    "RightsResult",
+    "RightsStatus",
+    "check_quote_safety",
+    "check_lyrics_rights",
+]

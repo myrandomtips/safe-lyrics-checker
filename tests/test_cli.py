@@ -1,17 +1,22 @@
 from safe_lyrics_checker.cli import main
 
 
-def test_cli_returns_success_for_safe_excerpt(capsys) -> None:
-    code = main(["gentle humming by the sea"])
+def test_rights_check_safe_exit_code(capsys) -> None:
+    code = main(["rights-check", "--jurisdiction", "US", "--publication-year", "1929"])
     captured = capsys.readouterr()
-
     assert code == 0
-    assert "Result: SAFE" in captured.out
+    assert "SAFE" in captured.out
 
 
-def test_cli_returns_error_for_unsafe_excerpt(capsys) -> None:
-    code = main(["line1\nline2\nline3\nline4\nline5", "--max-lines", "4"])
+def test_rights_check_unknown_exit_code(capsys) -> None:
+    code = main(["rights-check", "--jurisdiction", "US", "--publication-year", "1930", "--renewal-status", "unknown"])
     captured = capsys.readouterr()
+    assert code == 2
+    assert "UNKNOWN" in captured.out
 
+
+def test_quote_check_works_as_secondary_command(capsys) -> None:
+    code = main(["quote-check", "line1\nline2\nline3\nline4\nline5", "--max-lines", "4"])
+    captured = capsys.readouterr()
     assert code == 1
     assert "Result: UNSAFE" in captured.out
