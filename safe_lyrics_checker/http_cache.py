@@ -9,6 +9,8 @@ import requests
 
 DEFAULT_CACHE_DB = Path('.cache/safe_lyrics_checker.sqlite')
 DEFAULT_TTL_SECONDS = 7 * 24 * 60 * 60
+DEFAULT_TIMEOUT_SECONDS = 15
+DEFAULT_USER_AGENT = "safe-lyrics-checker/0.1 (+metadata-only)"
 
 
 class HttpCache:
@@ -44,7 +46,11 @@ class HttpCache:
                 if now - int(fetched_at) <= self.ttl_seconds:
                     return str(body)
 
-        response = requests.get(url, timeout=15)
+        response = requests.get(
+            url,
+            timeout=DEFAULT_TIMEOUT_SECONDS,
+            headers={"User-Agent": DEFAULT_USER_AGENT},
+        )
         response.raise_for_status()
         body = response.text
 
