@@ -21,6 +21,7 @@ classifiers = [
   "Topic :: Text Processing"
 ]
 dependencies = ["requests>=2.31"]
+dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]

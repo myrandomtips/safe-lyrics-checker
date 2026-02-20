@@ -23,6 +23,8 @@ The primary feature is `rights-check`, which classifies lyric rights status as:
 
 using only metadata (jurisdiction, publication year, lyricist death year, and US renewal status).
 
+The tool does **not** fetch lyric text, does **not** scrape websites, and does **not** use lyric databases.
+
 ## Conservative rules implemented
 
 ### UK / AU
@@ -45,13 +47,16 @@ using only metadata (jurisdiction, publication year, lyricist death year, and US
 
 ## CLI
 
-### Primary command: `rights-check`
+## Primary command: `rights-check`
 
+### United States
 ```bash
 safe-lyrics-checker rights-check --jurisdiction US --publication-year 1929
 safe-lyrics-checker rights-check --jurisdiction US --publication-year 1930 --renewal-status not_renewed
-safe-lyrics-checker rights-check --jurisdiction UK --lyricist-death-year 1955
-```
+safe-lyrics-checker rights-check --jurisdiction UK --lyricist-death-year 1954
+safe-lyrics-checker rights-check --jurisdiction AU --lyricist-death-year 1954
+
+
 
 Arguments:
 
@@ -115,6 +120,7 @@ Caching:
 - Cache key is URL with a default TTL of 7 days
 
 ### Secondary command: `quote-check`
+## Secondary command: `quote-check`
 
 A legacy/secondary heuristic checker for quote length and exact-match checks.
 It is **not** the primary legal status engine.
