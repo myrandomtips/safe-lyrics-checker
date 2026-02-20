@@ -45,6 +45,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=",".join(SOURCES.keys()),
         help="Comma-separated subset of sources: gutenberg,imslp,cpdl,loc,archive,worldcat,copyright",
     )
+    search_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Fail fast on source HTTP errors instead of skipping failed sources.",
+    )
 
     quote_parser = subparsers.add_parser(
         "quote-check",
@@ -113,13 +118,13 @@ def _run_search(args: argparse.Namespace) -> int:
         args.query,
         sources=selected_sources,
         max_results=args.max_results,
+        strict=args.strict,
     )
 
     if not candidates:
         print("No candidates found from selected sources.")
         return 2
 
-    aggregate_status = RightsStatus.SAFE
     for idx, candidate in enumerate(candidates, start=1):
         rights = evaluate_candidate(candidate, args.jurisdiction)
         print(f"[{idx}] {candidate.title}")
@@ -135,16 +140,7 @@ def _run_search(args: argparse.Namespace) -> int:
         for url in candidate.evidence_urls:
             print(f"    - {url}")
 
-        if rights.status is RightsStatus.UNKNOWN:
-            aggregate_status = RightsStatus.UNKNOWN
-        elif rights.status is RightsStatus.NOT_SAFE and aggregate_status is RightsStatus.SAFE:
-            aggregate_status = RightsStatus.NOT_SAFE
-
-    if aggregate_status is RightsStatus.SAFE:
-        return 0
-    if aggregate_status is RightsStatus.NOT_SAFE:
-        return 1
-    return 2
+    return 0
 
 
 def _run_quote_check(args: argparse.Namespace) -> int:

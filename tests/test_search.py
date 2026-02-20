@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import requests
+
 from safe_lyrics_checker.cli import main
 from safe_lyrics_checker.http_cache import HttpCache
 from safe_lyrics_checker.search_engine import search_candidates
@@ -91,3 +93,90 @@ def test_cli_search_outputs_rights_status(monkeypatch, tmp_path: Path) -> None:
     ])
 
     assert exit_code == 0
+
+
+def test_search_skips_worldcat_http_error_by_default(monkeypatch, tmp_path: Path, capsys) -> None:
+    responses = {
+        "https://www.gutenberg.org/ebooks/search/?query=amazing+grace": (
+            "<a href='/ebooks/123'>Amazing Grace</a>"
+        ),
+        "https://www.gutenberg.org/ebooks/123": "Published 1929. not renewed.",
+    }
+
+    def fake_get(url: str, timeout: int = 15):
+        if url.startswith("https://www.worldcat.org/search"):
+            response = requests.Response()
+            response.status_code = 403
+            response.reason = "Forbidden"
+            response.url = url
+            raise requests.HTTPError(response=response)
+        return DummyResponse(responses[url])
+
+    monkeypatch.setattr("safe_lyrics_checker.http_cache.requests.get", fake_get)
+    monkeypatch.chdir(tmp_path)
+
+    exit_code = main([
+        "search",
+        "amazing grace",
+        "--jurisdiction",
+        "US",
+        "--sources",
+        "worldcat,gutenberg",
+        "--max-results",
+        "1",
+    ])
+
+    stderr = capsys.readouterr().err
+    assert exit_code == 0
+    assert "WARN: worldcat search failed (403 Forbidden) — skipping." in stderr
+
+
+def test_search_with_only_failing_source_returns_unknown(monkeypatch, tmp_path: Path, capsys) -> None:
+    def fake_get(url: str, timeout: int = 15):
+        response = requests.Response()
+        response.status_code = 403
+        response.reason = "Forbidden"
+        response.url = url
+        raise requests.HTTPError(response=response)
+
+    monkeypatch.setattr("safe_lyrics_checker.http_cache.requests.get", fake_get)
+    monkeypatch.chdir(tmp_path)
+
+    exit_code = main([
+        "search",
+        "amazing grace",
+        "--jurisdiction",
+        "US",
+        "--sources",
+        "worldcat",
+    ])
+
+    captured = capsys.readouterr()
+    assert exit_code == 2
+    assert "WARN: worldcat search failed (403 Forbidden) — skipping." in captured.err
+    assert "No candidates found from selected sources." in captured.out
+
+
+def test_search_strict_mode_raises_http_error(monkeypatch, tmp_path: Path) -> None:
+    def fake_get(url: str, timeout: int = 15):
+        response = requests.Response()
+        response.status_code = 403
+        response.reason = "Forbidden"
+        response.url = url
+        raise requests.HTTPError(response=response)
+
+    monkeypatch.setattr("safe_lyrics_checker.http_cache.requests.get", fake_get)
+    monkeypatch.chdir(tmp_path)
+
+    import pytest
+
+    with pytest.raises(requests.HTTPError):
+        main([
+            "search",
+            "amazing grace",
+            "--jurisdiction",
+            "US",
+            "--sources",
+            "worldcat",
+            "--strict",
+        ])
