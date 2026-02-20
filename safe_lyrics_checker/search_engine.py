@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import sys
 from typing import Callable
+
+import requests
 
 from .http_cache import HttpCache
 from .rights_engine import RightsResult, check_lyrics_rights
@@ -28,6 +31,7 @@ def search_candidates(
     sources: list[str],
     max_results: int,
     cache: HttpCache | None = None,
+    strict: bool = False,
 ) -> list[Candidate]:
     cache = cache or HttpCache()
     results: list[Candidate] = []
@@ -35,17 +39,37 @@ def search_candidates(
 
     for source in sources:
         search_fn, enrich_fn = SOURCES[source]
-        for candidate in search_fn(query, cache):
-            key = (candidate.source, candidate.work_url)
-            if key in seen:
-                continue
-            seen.add(key)
-            enriched = enrich_fn(candidate, cache)
-            results.append(enriched)
-            if len(results) >= max_results:
-                return results
+        try:
+            for candidate in search_fn(query, cache):
+                key = (candidate.source, candidate.work_url)
+                if key in seen:
+                    continue
+                seen.add(key)
+                enriched = enrich_fn(candidate, cache)
+                results.append(enriched)
+                if len(results) >= max_results:
+                    return results
+        except requests.RequestException as exc:
+            if strict:
+                raise
+            print(f"WARN: {source} search failed ({_format_exception_reason(exc)}) — skipping.", file=sys.stderr)
+        except Exception as exc:
+            if strict:
+                raise
+            print(f"WARN: {source} search failed ({exc}) — skipping.", file=sys.stderr)
 
     return results
+
+
+def _format_exception_reason(exc: requests.RequestException) -> str:
+    response = getattr(exc, "response", None)
+    if response is not None and response.status_code:
+        reason = (response.reason or "").strip()
+        if reason:
+            return f"{response.status_code} {reason}"
+        return str(response.status_code)
+    message = str(exc).strip()
+    return message or exc.__class__.__name__
 
 
 def evaluate_candidate(candidate: Candidate, jurisdiction: str) -> RightsResult:
